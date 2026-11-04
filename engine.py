@@ -1,3 +1,4 @@
+# Author: Théo Cornu
 
 import time, random
 from dataclasses import dataclass, field
@@ -10,7 +11,7 @@ TERMINAL_BASE = 10000
 DIRS = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 
 @dataclass(frozen=True, slots=True)
-class State:
+class State:  # Théo Cornu
     black: int
     white: int
     player: int
@@ -19,13 +20,13 @@ class State:
 
 def _popcount(x): return bin(x).count("1")
 
-class OthelloEngine:
-    def __init__(self, seed=0xC0FFEE):
+class OthelloEngine:  # Théo Cornu
+    def __init__(self, seed=0xC0FFEE):  # Théo Cornu
         rng = random.Random(seed)
         self.Z = [[rng.getrandbits(64) for _ in range(3)] for _ in range(64)]
         self.Z_SIDE = rng.getrandbits(64)
 
-    def _hash(self, black, white, player):
+    def _hash(self, black, white, player):  # Théo Cornu
         h = 0
         bb = black
         while bb:
@@ -39,17 +40,17 @@ class OthelloEngine:
             h ^= self.Z_SIDE
         return h
 
-    def initial_state(self) -> State:
+    def initial_state(self) -> State:  # Théo Cornu
         black = (1<<(3*8+4)) | (1<<(4*8+3))
         white = (1<<(3*8+3)) | (1<<(4*8+4))
         return State(black, white, WHITE, 0, self._hash(black, white, WHITE))
 
-    def _player_bb(self, state, p):
+    def _player_bb(self, state, p):  # Théo Cornu
         return state.black if p==BLACK else state.white
-    def _opp_bb(self, state, p):
+    def _opp_bb(self, state, p):  # Théo Cornu
         return state.white if p==BLACK else state.black
 
-    def legal_moves(self, state) -> list[int]:
+    def legal_moves(self, state) -> list[int]:  # Théo Cornu
         p = state.player; opp = 3-p
         own = self._player_bb(state, p); other = self._player_bb(state, opp)
         occupied = state.black | state.white
@@ -79,7 +80,7 @@ class OthelloEngine:
             return [PASS]
         return []
 
-    def legal_moves_raw(self, black, white, p):
+    def legal_moves_raw(self, black, white, p):  # Théo Cornu
         own = black if p==BLACK else white
         other = white if p==BLACK else black
         occupied = black | white
@@ -101,7 +102,7 @@ class OthelloEngine:
             if ok: res.append(idx)
         return sorted(res)
 
-    def apply_move(self, state, move: int) -> State:
+    def apply_move(self, state, move: int) -> State:  # Théo Cornu
         if move == PASS:
             if self.legal_moves(state) != [PASS]:
                 if PASS not in self.legal_moves(state):
@@ -139,7 +140,7 @@ class OthelloEngine:
         new_hash = self._hash(new_black, new_white, new_player)
         return State(new_black, new_white, new_player, new_move_number, new_hash)
 
-    def is_terminal(self, state) -> bool:
+    def is_terminal(self, state) -> bool:  # Théo Cornu
         if state.black | state.white == (1<<64)-1:
             return True
         if self.legal_moves(state):
@@ -149,31 +150,31 @@ class OthelloEngine:
             return False
         return True
 
-    def score(self, state) -> tuple[int,int]:
+    def score(self, state) -> tuple[int,int]:  # Théo Cornu
         return _popcount(state.black), _popcount(state.white)
 
-    def mobility(self, state, player) -> int:
+    def mobility(self, state, player) -> int:  # Théo Cornu
         return len(self.legal_moves_raw(state.black, state.white, player))
 
-    def board_list(self, state) -> list[int]:
+    def board_list(self, state) -> list[int]:  # Théo Cornu
         out=[0]*64
         for i in range(64):
             if state.black & (1<<i): out[i]=BLACK
             elif state.white & (1<<i): out[i]=WHITE
         return out
 
-    def to_notation(self, move: int) -> str:
+    def to_notation(self, move: int) -> str:  # Théo Cornu
         if move == PASS: return "pass"
         r,c = divmod(move,8)
         return f"{chr(ord('a')+c)}{r+1}"
 
-    def from_notation(self, text: str) -> int:
+    def from_notation(self, text: str) -> int:  # Théo Cornu
         t=text.strip().lower()
         if t=="pass": return PASS
         c=ord(t[0])-ord('a'); r=int(t[1:])-1
         return r*8+c
 
-    def perft(self, state, depth: int) -> int:
+    def perft(self, state, depth: int) -> int:  # Théo Cornu
         if depth==0: return 1
         ms = self.legal_moves(state)
         if not ms:

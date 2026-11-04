@@ -1,3 +1,4 @@
+# Author: Théo Cornu
 """Lightweight web server (stdlib only) exposing Othello engine + AI."""
 import json, os, sys, http.server, socketserver
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,17 +12,17 @@ engine = OthelloEngine()
 state = {"s": engine.initial_state()}
 players = {"black": None, "white": None}
 
-def ensure_players():
+def ensure_players():  # Théo Cornu
     if players["black"] is None:
         players["black"] = build_player(engine, "ai:mixed")
     if players["white"] is None:
         players["white"] = build_player(engine, "human")
 
-def cur_player_obj():
+def cur_player_obj():  # Théo Cornu
     s = state["s"]
     return players["black"] if s.player == BLACK else players["white"]
 
-def st():
+def st():  # Théo Cornu
     s = state["s"]
     return {
         "board": engine.board_list(s),
@@ -32,14 +33,14 @@ def st():
         "terminal": engine.is_terminal(s),
     }
 
-class H(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *a, **k):
+class H(http.server.SimpleHTTPRequestHandler):  # Théo Cornu
+    def __init__(self, *a, **k):  # Théo Cornu
         super().__init__(*a, directory=os.path.dirname(os.path.abspath(__file__)), **k)
-    def do_GET(self):
+    def do_GET(self):  # Théo Cornu
         if self.path == "/api/state":
             self._json(st()); return
         return super().do_GET()
-    def do_POST(self):
+    def do_POST(self):  # Théo Cornu
         n=int(self.headers.get("Content-Length",0))
         body=json.loads(self.rfile.read(n) or b"{}")
         if self.path == "/api/config":
@@ -87,7 +88,7 @@ class H(http.server.SimpleHTTPRequestHandler):
                         "timed_out": r.timed_out})
             self._json(out); return
         self._json({"error": "unknown"}, 404)
-    def _json(self, obj, code=200):
+    def _json(self, obj, code=200):  # Théo Cornu
         data = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")

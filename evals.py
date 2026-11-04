@@ -1,3 +1,4 @@
+# Author: Théo Cornu
 
 from engine import State, BLACK, WHITE, PASS, OthelloEngine, EVAL_BOUND
 
@@ -15,14 +16,14 @@ WF = [W[r][c] for r in range(8) for c in range(8)]
 
 def _opp(p): return 3-p
 
-def _board(state): 
+def _board(state):   # Théo Cornu
     out=[0]*64
     for i in range(64):
         if state.black & (1<<i): out[i]=BLACK
         elif state.white & (1<<i): out[i]=WHITE
     return out
 
-def eval_positional(state, player, engine=None):
+def eval_positional(state, player, engine=None):  # Théo Cornu
     s=0
     for i in range(64):
         if state.black & (1<<i):
@@ -33,13 +34,13 @@ def eval_positional(state, player, engine=None):
             s+=v
     return float(s)
 
-def eval_absolute(state, player, engine=None):
+def eval_absolute(state, player, engine=None):  # Théo Cornu
     bc = bin(state.black).count("1"); wc=bin(state.white).count("1")
     pc = bc if player==BLACK else wc
     oc = wc if player==BLACK else bc
     return float(pc-oc)
 
-def eval_mobility(state, player, engine):
+def eval_mobility(state, player, engine):  # Théo Cornu
     my = engine.mobility(state, player)
     their = engine.mobility(state, _opp(player))
     corners=[0,7,56,63]
@@ -49,7 +50,7 @@ def eval_mobility(state, player, engine):
     pc = bc if player==BLACK else wc; oc = wc if player==BLACK else bc
     return float((my-their)+10*(cb-co)+(pc-oc))
 
-def eval_mixed(state, player, engine):
+def eval_mixed(state, player, engine):  # Théo Cornu
     empties = 64 - (bin(state.black|state.white).count("1"))
     if state.move_number < 22:
         return eval_positional(state, player, engine)
@@ -57,7 +58,7 @@ def eval_mixed(state, player, engine):
         return eval_absolute(state, player, engine)
     return eval_mobility(state, player, engine)
 
-def make_evaluator(name, engine, **params):
+def make_evaluator(name, engine, **params):  # Théo Cornu
     early = params.get("early_moves", 22)
     endg = params.get("endgame_empties", 12)
     if name=="positional":
@@ -67,7 +68,7 @@ def make_evaluator(name, engine, **params):
     elif name=="mobility":
         def f(s,p): return eval_mobility(s,p,engine)
     elif name=="mixed":
-        def f(s,p):
+        def f(s,p):  # Théo Cornu
             empties=64-bin(s.black|s.white).count("1")
             if s.move_number < early: return eval_positional(s,p,engine)
             if empties <= endg: return eval_absolute(s,p,engine)

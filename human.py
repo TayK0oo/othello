@@ -1,13 +1,14 @@
+# Author: Théo Cornu
 
 import time
 from agent import MoveResult
 
-class HumanPlayer:
-    def __init__(self, engine, name="Human"):
+class HumanPlayer:  # Théo Cornu
+    def __init__(self, engine, name="Human"):  # Théo Cornu
         self.engine=engine; self.name=name
-    def new_game(self, color):
+    def new_game(self, color):  # Théo Cornu
         pass
-    def choose_move(self, state):
+    def choose_move(self, state):  # Théo Cornu
         eng=self.engine
         ms=eng.legal_moves(state)
         if not ms:

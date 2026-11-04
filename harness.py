@@ -1,3 +1,4 @@
+# Author: Théo Cornu
 
 import csv, os, time
 from engine import State, BLACK, WHITE, PASS, OthelloEngine, CONTRACT_VERSION
@@ -5,13 +6,13 @@ from agent import MoveResult
 from dataclasses import dataclass
 
 @dataclass
-class GameResult:
+class GameResult:  # Théo Cornu
     winner: int
     score: tuple
     moves: list
     move_results: list
 
-def play_game(engine, black, white, *, game_id="g", out_dir=None):
+def play_game(engine, black, white, *, game_id="g", out_dir=None):  # Théo Cornu
     black.new_game(BLACK); white.new_game(WHITE)
     state=engine.initial_state()
     moves=[]; mrs=[]

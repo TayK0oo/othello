@@ -1,3 +1,4 @@
+# Author: Théo Cornu
 """CLI: launch games by type."""
 import sys
 from engine import OthelloEngine, BLACK, WHITE
@@ -6,15 +7,15 @@ from agent import Agent
 from human import HumanPlayer
 from harness import play_game
 
-def ai(engine, strategy="mixed", algo="alphabeta", depth=4, budget=1000, name=None):
+def ai(engine, strategy="mixed", algo="alphabeta", depth=4, budget=1000, name=None):  # Théo Cornu
     ev = make_evaluator(strategy, engine)
     return Agent(engine, ev, algo=algo, max_depth=depth, time_budget_ms=budget,
                 name=name or f"AI({strategy})")
 
-def human(engine, name="Human"):
+def human(engine, name="Human"):  # Théo Cornu
     return HumanPlayer(engine, name)
 
-def parse_side(spec):
+def parse_side(spec):  # Théo Cornu
     # spec: "human" or "ai:strat:algo:depth:budget"
     if spec == "human":
         return "human", {}
@@ -26,13 +27,13 @@ def parse_side(spec):
            "budget": int(parts[4]) if len(parts)>4 else 1000}
     return kind, cfg
 
-def build(engine, spec):
+def build(engine, spec):  # Théo Cornu
     kind, cfg = parse_side(spec)
     if kind == "human":
         return human(engine)
     return ai(engine, name=kind.upper(), **cfg)
 
-def main():
+def main():  # Théo Cornu
     # usage: python cli.py <black_spec> <white_spec> [games]
     # spec examples: human | ai | ai:mixed | ai:positional:alphabeta:5:2000
     if len(sys.argv) < 3:

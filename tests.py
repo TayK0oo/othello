@@ -1,8 +1,9 @@
+# Author: Théo Cornu
 
 from engine import OthelloEngine, BLACK, WHITE, PASS
 from evals import make_evaluator, EVALS_NAMES
 
-def test_perft():
+def test_perft():  # Théo Cornu
     eng=OthelloEngine()
     s=eng.initial_state()
     expected={1:4,2:12,3:56,4:244,5:1396,6:8200}
@@ -12,7 +13,7 @@ def test_perft():
         assert got==exp, (d,got,exp)
     print("perft OK")
 
-def test_symmetry():
+def test_symmetry():  # Théo Cornu
     eng=OthelloEngine()
     s=eng.initial_state()
     for name in EVALS_NAMES:
@@ -22,7 +23,7 @@ def test_symmetry():
         assert abs(v1)<1000
     print("symmetry+bounds OK")
 
-def test_hash_incremental():
+def test_hash_incremental():  # Théo Cornu
     eng=OthelloEngine()
     s=eng.initial_state()
     ms=eng.legal_moves(s)

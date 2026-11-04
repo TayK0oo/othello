@@ -1,10 +1,11 @@
+# Author: Théo Cornu
 
 import time, random
 from dataclasses import dataclass
 from engine import State, BLACK, WHITE, PASS, OthelloEngine, TERMINAL_BASE
 
 @dataclass
-class MoveResult:
+class MoveResult:  # Théo Cornu
     move: int
     eval_score: float
     nodes: int
@@ -14,12 +15,12 @@ class MoveResult:
     timed_out: bool
     tt_hits: int
 
-class Player:
+class Player:  # Théo Cornu
     name: str
     def new_game(self, color): ...
     def choose_move(self, state) -> MoveResult: ...
 
-class Agent(Player):
+class Agent(Player):  # Théo Cornu
     def __init__(self, engine, evaluator, *, algo="alphabeta", max_depth=6,
                  time_budget_ms=1000, use_tt=True, reuse_tree=True, seed=0, name=None):
         self.engine=engine; self.evaluator=evaluator; self.algo=algo
@@ -30,11 +31,11 @@ class Agent(Player):
         self.tt={}; self.prev_best=None
         self.nodes=0; self.evals=0; self.tt_hits=0
 
-    def new_game(self, color):
+    def new_game(self, color):  # Théo Cornu
         self.tt={}; self.prev_best=None
         self._rng=random.Random(self.seed)
 
-    def _terminal_value(self, state, player):
+    def _terminal_value(self, state, player):  # Théo Cornu
         b,w=self.engine.score(state)
         pc = b if player==BLACK else w
         oc = w if player==BLACK else b
@@ -42,10 +43,10 @@ class Agent(Player):
         if diff==0: return 0.0
         return (1 if diff>0 else -1)*(TERMINAL_BASE+abs(diff))
 
-    def _is_terminal(self, state):
+    def _is_terminal(self, state):  # Théo Cornu
         return self.engine.is_terminal(state)
 
-    def _search(self, state, depth, root_player, alpha, beta):
+    def _search(self, state, depth, root_player, alpha, beta):  # Théo Cornu
         engine=self.engine
         if self._is_terminal(state):
             return self._terminal_value(state, root_player), None, 0, 0, 0, False
@@ -96,7 +97,7 @@ class Agent(Player):
             break
         return 0.0, None, 0,0,0,False
 
-    def choose_move(self, state):
+    def choose_move(self, state):  # Théo Cornu
         engine=self.engine
         root_player=state.player
         ms=engine.legal_moves(state)
@@ -130,7 +131,7 @@ class Agent(Player):
         return MoveResult(best_move, best_score if best_score is not None else 0.0,
                           self.nodes, self.evals, elapsed, depth_reached, timed_out, self.tt_hits)
 
-    def _root_search(self, state, depth, root_player):
+    def _root_search(self, state, depth, root_player):  # Théo Cornu
         engine=self.engine
         ms=engine.legal_moves(state)
         if not ms: ms=[PASS] if PASS in (ms or []) else ms
@@ -154,7 +155,7 @@ class Agent(Player):
             self.tt[state.hash]=(state.black, state.white, state.player, depth, best_score, best_move)
         return best_score, best_move, timed_out
 
-    def _ab(self, state, depth, root_player, alpha, beta):
+    def _ab(self, state, depth, root_player, alpha, beta):  # Théo Cornu
         engine=self.engine
         if engine.is_terminal(state):
             return self._terminal_value(state, root_player)
@@ -209,7 +210,7 @@ class Agent(Player):
                 self.tt[state.hash]=(state.black, state.white, state.player, depth, best, None)
             return best
 
-    def _order_moves(self, state, ms, tt_move):
+    def _order_moves(self, state, ms, tt_move):  # Théo Cornu
         order=[]
         if tt_move is not None and tt_move in ms: order.append(tt_move)
         if self.prev_best is not None and self.prev_best in ms and self.prev_best not in order: order.append(self.prev_best)

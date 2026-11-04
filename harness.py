@@ -1,45 +1,57 @@
-"""Match harness: N games, seeds, CSV."""
-import csv, time, random
-from engine import initial_state, apply_move, is_terminal, legal_moves, score
-from agent import Agent
+"""Harness v1.1."""
+import csv, os, time
+from engine import State, BLACK, WHITE, PASS, OthelloEngine, CONTRACT_VERSION
+from agent import MoveResult
+from dataclasses import dataclass
 
-def play_game(agent_black, agent_white, max_moves=120):
-    # black=1, white=2; white starts per subject
-    state=initial_state()
-    moves=[]
-    t0=time.time()
-    n=0
-    while not is_terminal(state) and n<max_moves:
-        ms=legal_moves(state)
-        if not ms:
-            state=apply_move(state,-1); moves.append(-1); n+=1; continue
-        agent = agent_white if state.player==2 else agent_black
-        r=agent.choose_move(state,ms)
-        m=r["move"]
-        if m not in ms and m!=-1:
-            m=ms[0]
-        state=apply_move(state,m); moves.append(m); n+=1
-    b,w=score(state)
-    winner = 1 if b>w else (2 if w>b else 0)
-    return {"winner":winner,"black":b,"white":w,"moves":moves,"time_s":time.time()-t0}
+@dataclass
+class GameResult:
+    winner: int
+    score: tuple
+    moves: list
+    move_results: list
 
-def run_campaign(agentA_factory, agentB_factory, n_games=10, csv_path="results.csv"):
-    rows=[]
-    for g in range(n_games):
-        # alternate sides
-        if g%2==0:
-            ab=agentA_factory(); aw=agentB_factory()
-            sideA="black"
-        else:
-            ab=agentB_factory(); aw=agentA_factory()
-            sideA="white"
-        res=play_game(ab,aw)
-        a_score = res["black"] if sideA=="black" else res["white"]
-        b_score = res["white"] if sideA=="black" else res["black"]
-        a_win = (res["winner"]==1 and sideA=="black") or (res["winner"]==2 and sideA=="white")
-        rows.append({"game":g,"sideA":sideA,"A_score":a_score,"B_score":b_score,
-                     "A_win":int(a_win),"draw":int(res["winner"]==0)})
-    with open(csv_path,"w",newline="") as f:
-        w=csv.DictWriter(f,fieldnames=list(rows[0].keys()))
-        w.writeheader(); w.writerows(rows)
-    return rows
+def play_game(engine, black, white, *, game_id="g", out_dir=None):
+    black.new_game(BLACK); white.new_game(WHITE)
+    state=engine.initial_state()
+    moves=[]; mrs=[]
+    nplies=0; timeout_violations=0
+    while not engine.is_terminal(state):
+        ms=engine.legal_moves(state)
+        if ms==[]:
+            break
+        if ms==[PASS]:
+            # automatic pass? contract: harness applies passes automatically; here player to move has no moves -> pass
+            state=engine.apply_move(state, PASS); moves.append(PASS); nplies+=1; continue
+        player = black if state.player==BLACK else white
+        mr = player.choose_move(state)
+        m = mr.move
+        if m not in ms:
+            # forfeit
+            winner = WHITE if state.player==BLACK else BLACK
+            return GameResult(winner, engine.score(state), moves, mrs)
+        if mr.time_ms > 1.10* (getattr(player,'time_budget_ms',1000) or 1000):
+            timeout_violations+=1
+        state=engine.apply_move(state, m)
+        moves.append(m); mrs.append(mr); nplies+=1
+    sc=engine.score(state)
+    winner = BLACK if sc[0]>sc[1] else (WHITE if sc[1]>sc[0] else 0)
+    # write outputs
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        os.makedirs(os.path.join(out_dir,"games"), exist_ok=True)
+        # moves.csv append
+        with open(os.path.join(out_dir,"moves.csv"),"a",newline="") as f:
+            w=csv.writer(f)
+            for i,mr in enumerate(mrs):
+                w.writerow([CONTRACT_VERSION, game_id, i, "B" if (moves[i] is not None) else "", "", moves[i], mr.eval_score, mr.nodes, mr.evals, round(mr.time_ms,3), mr.depth_reached, mr.timed_out, mr.tt_hits])
+        # game txt
+        with open(os.path.join(out_dir,"games",f"{game_id}.txt"),"w") as f:
+            f.write(f"# game_id={game_id} contract={CONTRACT_VERSION}\n")
+            for i,m in enumerate(moves):
+                es = mrs[i].eval_score if i < len(mrs) else "-"
+                f.write(f"{i};{'B' if (i%2==0) else 'W'};{engine.to_notation(m)};{es}\n")
+        with open(os.path.join(out_dir,"matches.csv"),"a",newline="") as f:
+            w=csv.writer(f)
+            w.writerow([CONTRACT_VERSION, game_id, 0, black.name, white.name, getattr(black,'algo','human'), getattr(white,'algo','human'), "", "", getattr(black,'max_depth',''), getattr(black,'time_budget_ms',''), sc[0], sc[1], winner, nplies, timeout_violations])
+    return GameResult(winner, sc, moves, mrs)

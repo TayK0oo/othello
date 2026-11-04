@@ -1,4 +1,4 @@
-"""Othello engine v1.1 (bitboards, Zobrist)."""
+
 import time, random
 from dataclasses import dataclass, field
 
@@ -22,7 +22,7 @@ def _popcount(x): return bin(x).count("1")
 class OthelloEngine:
     def __init__(self, seed=0xC0FFEE):
         rng = random.Random(seed)
-        self.Z = [[rng.getrandbits(64) for _ in range(3)] for _ in range(64)]  # [cell][piece 0/1/2], piece 0 unused
+        self.Z = [[rng.getrandbits(64) for _ in range(3)] for _ in range(64)]
         self.Z_SIDE = rng.getrandbits(64)
 
     def _hash(self, black, white, player):
@@ -53,7 +53,6 @@ class OthelloEngine:
         p = state.player; opp = 3-p
         own = self._player_bb(state, p); other = self._player_bb(state, opp)
         occupied = state.black | state.white
-        # any move?
         res = []
         for idx in range(64):
             if occupied & (1<<idx): continue
@@ -74,9 +73,7 @@ class OthelloEngine:
                 res.append(idx)
         if res:
             return sorted(res)
-        # pass?
-        opp_state = State(state.black, state.white, opp, state.move_number, state.hash ^ self.Z_SIDE)  # hash flip side (approx)
-        # recompute legal for opp
+        opp_state = State(state.black, state.white, opp, state.move_number, state.hash ^ self.Z_SIDE)
         opp_moves = self.legal_moves_raw(state.black, state.white, opp)
         if opp_moves:
             return [PASS]
@@ -106,15 +103,12 @@ class OthelloEngine:
 
     def apply_move(self, state, move: int) -> State:
         if move == PASS:
-            # validate pass allowed
             if self.legal_moves(state) != [PASS]:
-                # pass allowed only when no moves for player but opp has
                 if PASS not in self.legal_moves(state):
                     raise ValueError("illegal pass")
             p = 3 - state.player
             new_hash = state.hash ^ self.Z_SIDE
             return State(state.black, state.white, p, state.move_number, new_hash)
-        # validate
         if move not in self.legal_moves(state):
             raise ValueError(f"illegal move {move}")
         p = state.player; opp = 3-p

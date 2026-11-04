@@ -1,4 +1,4 @@
-"""Tests v1.1."""
+
 from engine import OthelloEngine, BLACK, WHITE, PASS
 from evals import make_evaluator, EVALS_NAMES
 
@@ -25,7 +25,6 @@ def test_symmetry():
 def test_hash_incremental():
     eng=OthelloEngine()
     s=eng.initial_state()
-    # apply a move and check hash recomputed equals state.hash
     ms=eng.legal_moves(s)
     s2=eng.apply_move(s, ms[0])
     assert s2.hash == eng._hash(s2.black, s2.white, s2.player)

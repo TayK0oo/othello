@@ -1,4 +1,4 @@
-"""CLI human vs AI."""
+
 import sys
 from engine import OthelloEngine, BLACK, WHITE, PASS
 from evals import make_evaluator
@@ -13,7 +13,6 @@ def main():
     ev = make_evaluator(strat, engine)
     human = HumanPlayer(engine, "Human")
     ai = Agent(engine, ev, algo="alphabeta", max_depth=6, time_budget_ms=budget, name="AI")
-    # human plays white (starts)
     res = play_game(engine, ai, human, game_id="cli", out_dir=None)
     print("Final score (black, white):", res.score)
     print("Winner:", res.winner, "(0 draw)")

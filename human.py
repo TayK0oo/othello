@@ -1,4 +1,4 @@
-"""Human player implementing Player."""
+
 import time
 from agent import MoveResult
 

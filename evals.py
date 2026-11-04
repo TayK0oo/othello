@@ -1,4 +1,4 @@
-"""Evaluations v1.1."""
+
 from engine import State, BLACK, WHITE, PASS, OthelloEngine, EVAL_BOUND
 
 W = [

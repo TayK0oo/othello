@@ -1,4 +1,4 @@
-"""Agent v1.1."""
+
 import time, random
 from dataclasses import dataclass
 from engine import State, BLACK, WHITE, PASS, OthelloEngine, TERMINAL_BASE
@@ -46,25 +46,20 @@ class Agent(Player):
         return self.engine.is_terminal(state)
 
     def _search(self, state, depth, root_player, alpha, beta):
-        # returns (score, move, nodes_delta, evals_delta, tt_hits_delta, timed_out)
         engine=self.engine
         if self._is_terminal(state):
             return self._terminal_value(state, root_player), None, 0, 0, 0, False
         ms = engine.legal_moves(state)
         if not ms:
-            # pass already? legal_moves returns [PASS] or []
             if ms==[]:
                 return self._terminal_value(state, root_player), None, 0,0,0,False
             ms=[PASS]
         if depth==0:
-            # evaluate
             self.evals+=1
             return self.evaluator(state, root_player), (ms[0] if ms else None), 0,1,0,False
-        # single move shortcut
         if len(ms)==1:
             ns=engine.apply_move(state, ms[0])
             sc,_,_,_,_,_ = self._search(ns, depth-1, root_player, alpha, beta)
-            # convert: sc is from root_player perspective already
             return sc, ms[0], 1,0,0,False
         tt_move=None
         if self.use_tt:
@@ -74,16 +69,13 @@ class Agent(Player):
                     self.tt_hits+=1
                     return e[4], e[5], 0,0,1,False
                 tt_move=e[5]
-        # ordering
         order=[]
         if tt_move is not None and tt_move in ms: order.append(tt_move)
         if self.prev_best is not None and self.prev_best in ms and self.prev_best not in order: order.append(self.prev_best)
         corners={0,7,56,63}
         for m in ms:
             if m not in order: order.append(m)
-        # corners first
         order.sort(key=lambda m: (0 if m in corners else 1))
-        # stable: re-prioritize tt/prev
         prio=[m for m in order if m in (set([tt_move,self.prev_best]) - {None})]
         rest=[m for m in order if m not in prio]
         order=prio+rest
@@ -99,36 +91,28 @@ class Agent(Player):
             ns=engine.apply_move(state,m)
             self.nodes+=1
             sc,_,dn,de,dh,_ = self._search(ns, depth-1, root_player,
-                                           alpha if not maximizing else None,  # placeholder
+                                           alpha if not maximizing else None,
                                            beta)
-            # We need proper alpha/beta; redo below instead
             break
-        # The above is broken; implement properly:
         return 0.0, None, 0,0,0,False
 
     def choose_move(self, state):
-        # iterative deepening
         engine=self.engine
         root_player=state.player
         ms=engine.legal_moves(state)
         if not ms:
-            # pass or terminal
             if ms==[]:
-                # terminal; shouldn't happen for choose_move
                 return MoveResult(PASS,0.0,0,0,0.0,0,False,0)
             ms=[PASS]
         if len(ms)==1:
             return MoveResult(ms[0], self.evaluator(state,root_player) if False else 0.0, 0,0,0.0,0,False,0)
-        # reset counters for this move
         self.nodes=0; self.evals=0; self.tt_hits=0
         start=time.perf_counter()
         self._deadline = start + self.time_budget_ms/1000.0
         best_move=ms[0]; best_score=None; depth_reached=0; timed_out=False
-        # proper search functions with alpha/beta
         for d in range(1, self.max_depth+1):
             if time.perf_counter() >= self._deadline:
                 break
-            # minimax/ab/negamax dispatch
             try:
                 sc, mv, to = self._root_search(state, d, root_player)
             except Exception:
@@ -151,7 +135,6 @@ class Agent(Player):
         ms=engine.legal_moves(state)
         if not ms: ms=[PASS] if PASS in (ms or []) else ms
         if not ms: ms=[PASS]
-        # alpha-beta
         timed_out=False
         best_score=None; best_move=ms[0]
         alpha=float('-inf'); beta=float('inf')
@@ -162,13 +145,11 @@ class Agent(Player):
             ns=engine.apply_move(state,m)
             self.nodes+=1
             sc = self._ab(ns, depth-1, root_player, alpha, beta)
-            # sc is root_player perspective
             if best_score is None or sc > best_score:
                 best_score=sc; best_move=m
             alpha=max(alpha, best_score)
             if beta <= alpha:
                 break
-        # store TT
         if self.use_tt:
             self.tt[state.hash]=(state.black, state.white, state.player, depth, best_score, best_move)
         return best_score, best_move, timed_out

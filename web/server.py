@@ -1,4 +1,4 @@
-"""Lightweight web server (stdlib only) exposing Othello engine + AI."""
+
 import json, os, sys, http.server, socketserver
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from engine import OthelloEngine, BLACK, WHITE, PASS

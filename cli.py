@@ -1,54 +1,45 @@
 # Author: Théo Cornu
-"""CLI: launch games by type."""
 import sys
-from engine import OthelloEngine, BLACK, WHITE
-from evals import make_evaluator
-from agent import Agent
-from human import HumanPlayer
+
+from config import OUTPUT_DIR
+from engine import OthelloEngine
 from harness import play_game
+from players import load_player_config, make_profile_player
 
-def ai(engine, strategy="mixed", algo="alphabeta", depth=4, budget=1000, name=None):  # Théo Cornu
-    ev = make_evaluator(strategy, engine)
-    return Agent(engine, ev, algo=algo, max_depth=depth, time_budget_ms=budget,
-                name=name or f"AI({strategy})")
 
-def human(engine, name="Human"):  # Théo Cornu
-    return HumanPlayer(engine, name)
+def print_help(config):
+    print("Usage : python cli.py <profil_noir> <profil_blanc> [nb_parties]")
+    print("Profils disponibles :", ", ".join(config["profiles"].keys()))
+    print("Exemples :")
+    print("  python cli.py human mixed_ai")
+    print("  python cli.py positional_ai mobility_ai 5")
 
-def parse_side(spec):  # Théo Cornu
-    # spec: "human" or "ai:strat:algo:depth:budget"
-    if spec == "human":
-        return "human", {}
-    parts = spec.split(":")
-    kind = parts[0]
-    cfg = {"strategy": parts[1] if len(parts)>1 else "mixed",
-           "algo": parts[2] if len(parts)>2 else "alphabeta",
-           "depth": int(parts[3]) if len(parts)>3 else 4,
-           "budget": int(parts[4]) if len(parts)>4 else 1000}
-    return kind, cfg
 
-def build(engine, spec):  # Théo Cornu
-    kind, cfg = parse_side(spec)
-    if kind == "human":
-        return human(engine)
-    return ai(engine, name=kind.upper(), **cfg)
+def main():
+    config = load_player_config()
+    if len(sys.argv) < 3 or sys.argv[1] in ("-h", "--help", "help"):
+        print_help(config)
+        return
 
-def main():  # Théo Cornu
-    # usage: python cli.py <black_spec> <white_spec> [games]
-    # spec examples: human | ai | ai:mixed | ai:positional:alphabeta:5:2000
-    if len(sys.argv) < 3:
-        print("Usage: python cli.py <black> <white> [games]")
-        print("  black/white: human | ai[:strat[:algo[:depth[:budget]]]]")
-        print("  e.g. python cli.py human ai:mixed")
-        print("       python cli.py ai:positional ai:mobility 5")
-        sys.exit(1)
+    black_profile = sys.argv[1]
+    white_profile = sys.argv[2]
     games = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+
     engine = OthelloEngine()
-    bp = build(engine, sys.argv[1])
-    wp = build(engine, sys.argv[2])
-    for g in range(games):
-        res = play_game(engine, bp, wp, game_id=f"g{g}", out_dir="runs" if games>1 else None)
-        print(f"Game {g}: winner={res.winner} score={res.score} plies={len(res.moves)}")
+    black = make_profile_player(engine, black_profile, config)
+    white = make_profile_player(engine, white_profile, config)
+
+    for game_index in range(games):
+        result = play_game(
+            engine, black, white,
+            game_id=f"{black_profile}_vs_{white_profile}_{game_index}",
+            out_dir=OUTPUT_DIR,
+        )
+        print(
+            f"Partie {game_index + 1} : gagnant={result.winner} "
+            f"score={result.score} coups={len(result.moves)}"
+        )
+
 
 if __name__ == "__main__":
     main()

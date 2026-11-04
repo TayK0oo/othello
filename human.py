@@ -1,31 +1,36 @@
 # Author: Théo Cornu
-
 import time
-from agent import MoveResult
 
-class HumanPlayer:  # Théo Cornu
-    def __init__(self, engine, name="Human"):  # Théo Cornu
-        self.engine=engine; self.name=name
-    def new_game(self, color):  # Théo Cornu
-        pass
-    def choose_move(self, state):  # Théo Cornu
-        eng=self.engine
-        ms=eng.legal_moves(state)
-        if not ms:
-            ms=[-1]
-        print("Legal moves:", [eng.to_notation(m) for m in ms])
+from agent import MoveResult, Player
+from config import PASS
+
+
+class HumanPlayer(Player):
+    def __init__(self, engine, name="Humain"):
+        self.engine = engine
+        self.name = name
+
+    def new_game(self, color):
+        return None
+
+    def choose_move(self, state):
+        legal = self.engine.legal_moves(state)
+        if not legal:
+            legal = [PASS]
+        print("Coups légaux :", [self.engine.to_notation(move) for move in legal])
         while True:
             try:
-                txt=input("Your move (e.g. d3, or pass): ").strip()
+                text = input("Votre coup (ex: d3, pass) : ").strip()
             except EOFError:
-                txt="pass"
+                text = "pass"
             try:
-                m=eng.from_notation(txt)
+                move = self.engine.from_notation(text)
             except Exception:
-                print("parse error"); continue
-            if m in ms:
+                print("Format invalide, réessayez.")
+                continue
+            if move in legal:
                 break
-            print("illegal, try again")
-        t0=time.perf_counter()
-        elapsed=(time.perf_counter()-t0)*1000
-        return MoveResult(m, 0.0, 0, 0, elapsed, 0, False, 0)
+            print("Coup illégal, réessayez.")
+        start = time.perf_counter()
+        elapsed = (time.perf_counter() - start) * 1000
+        return MoveResult(move, 0.0, 0, 0, elapsed, 0, False, 0)

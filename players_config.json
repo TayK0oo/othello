@@ -1,0 +1,42 @@
+{
+  "default_black": "mixed_ai",
+  "default_white": "human",
+  "profiles": {
+    "human": {
+      "type": "human",
+      "name": "Humain"
+    },
+    "mixed_ai": {
+      "type": "ai",
+      "name": "IA Mixte",
+      "strategy": "mixed",
+      "algo": "alphabeta",
+      "depth": 6,
+      "budget_ms": 1000
+    },
+    "positional_ai": {
+      "type": "ai",
+      "name": "IA Positionnelle",
+      "strategy": "positional",
+      "algo": "alphabeta",
+      "depth": 6,
+      "budget_ms": 1000
+    },
+    "absolute_ai": {
+      "type": "ai",
+      "name": "IA Absolue",
+      "strategy": "absolute",
+      "algo": "alphabeta",
+      "depth": 6,
+      "budget_ms": 1000
+    },
+    "mobility_ai": {
+      "type": "ai",
+      "name": "IA Mobilité",
+      "strategy": "mobility",
+      "algo": "alphabeta",
+      "depth": 6,
+      "budget_ms": 1000
+    }
+  }
+}

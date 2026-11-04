@@ -1,11 +1,13 @@
 # Author: Théo Cornu
-
-import time, random
+import random
+import time
 from dataclasses import dataclass
-from engine import State, BLACK, WHITE, PASS, OthelloEngine, TERMINAL_BASE
+
+from config import BLACK, WHITE, PASS, TERMINAL_SCORE_BASE
+
 
 @dataclass
-class MoveResult:  # Théo Cornu
+class MoveResult:
     move: int
     eval_score: float
     nodes: int
@@ -15,205 +17,195 @@ class MoveResult:  # Théo Cornu
     timed_out: bool
     tt_hits: int
 
-class Player:  # Théo Cornu
-    name: str
-    def new_game(self, color): ...
-    def choose_move(self, state) -> MoveResult: ...
 
-class Agent(Player):  # Théo Cornu
+class Player:
+    name: str
+
+    def new_game(self, color):
+        raise NotImplementedError
+
+    def choose_move(self, state):
+        raise NotImplementedError
+
+
+class Agent(Player):
     def __init__(self, engine, evaluator, *, algo="alphabeta", max_depth=6,
                  time_budget_ms=1000, use_tt=True, reuse_tree=True, seed=0, name=None):
-        self.engine=engine; self.evaluator=evaluator; self.algo=algo
-        self.max_depth=max_depth; self.time_budget_ms=time_budget_ms
-        self.use_tt=use_tt; self.reuse_tree=reuse_tree; self.seed=seed
-        self.name=name or f"Agent({algo})"
-        self._rng=random.Random(seed)
-        self.tt={}; self.prev_best=None
-        self.nodes=0; self.evals=0; self.tt_hits=0
+        self.engine = engine
+        self.evaluator = evaluator
+        self.algo = algo
+        self.max_depth = max_depth
+        self.time_budget_ms = time_budget_ms
+        self.use_tt = use_tt
+        self.reuse_tree = reuse_tree
+        self.seed = seed
+        self.name = name or f"Agent({algo})"
+        self.random = random.Random(seed)
+        self.transposition_table = {}
+        self.previous_best = None
+        self.nodes = 0
+        self.evals = 0
+        self.tt_hits = 0
+        self.deadline = 0.0
 
-    def new_game(self, color):  # Théo Cornu
-        self.tt={}; self.prev_best=None
-        self._rng=random.Random(self.seed)
+    def new_game(self, color):
+        self.transposition_table = {}
+        self.previous_best = None
+        self.random = random.Random(self.seed)
 
-    def _terminal_value(self, state, player):  # Théo Cornu
-        b,w=self.engine.score(state)
-        pc = b if player==BLACK else w
-        oc = w if player==BLACK else b
-        diff = pc-oc
-        if diff==0: return 0.0
-        return (1 if diff>0 else -1)*(TERMINAL_BASE+abs(diff))
+    def _terminal_score(self, state, player):
+        black_score, white_score = self.engine.score(state)
+        own = black_score if player == BLACK else white_score
+        other = white_score if player == BLACK else black_score
+        difference = own - other
+        if difference == 0:
+            return 0.0
+        return (1 if difference > 0 else -1) * (TERMINAL_SCORE_BASE + abs(difference))
 
-    def _is_terminal(self, state):  # Théo Cornu
-        return self.engine.is_terminal(state)
+    def _order_moves(self, state, moves, tt_move):
+        ordered = []
+        if tt_move is not None and tt_move in moves:
+            ordered.append(tt_move)
+        if self.previous_best is not None and self.previous_best in moves and self.previous_best not in ordered:
+            ordered.append(self.previous_best)
+        corners = {0, 7, 56, 63}
+        remaining = sorted(
+            [move for move in moves if move not in ordered],
+            key=lambda move: (0 if move in corners else 1, move),
+        )
+        return ordered + remaining
 
-    def _search(self, state, depth, root_player, alpha, beta):  # Théo Cornu
-        engine=self.engine
-        if self._is_terminal(state):
-            return self._terminal_value(state, root_player), None, 0, 0, 0, False
-        ms = engine.legal_moves(state)
-        if not ms:
-            if ms==[]:
-                return self._terminal_value(state, root_player), None, 0,0,0,False
-            ms=[PASS]
-        if depth==0:
-            self.evals+=1
-            return self.evaluator(state, root_player), (ms[0] if ms else None), 0,1,0,False
-        if len(ms)==1:
-            ns=engine.apply_move(state, ms[0])
-            sc,_,_,_,_,_ = self._search(ns, depth-1, root_player, alpha, beta)
-            return sc, ms[0], 1,0,0,False
-        tt_move=None
+    def _lookup_tt(self, state, depth):
+        entry = self.transposition_table.get(state.hash)
+        if entry is None:
+            return None
+        if entry[0] != state.black or entry[1] != state.white or entry[2] != state.player:
+            return None
+        if entry[3] >= depth:
+            self.tt_hits += 1
+            return entry[4], entry[5]
+        return None, entry[5]
+
+    def _store_tt(self, state, depth, score, move):
         if self.use_tt:
-            e=self.tt.get(state.hash)
-            if e is not None and e[0]==state.black and e[1]==state.white and e[2]==state.player:
-                if e[3] >= depth:
-                    self.tt_hits+=1
-                    return e[4], e[5], 0,0,1,False
-                tt_move=e[5]
-        order=[]
-        if tt_move is not None and tt_move in ms: order.append(tt_move)
-        if self.prev_best is not None and self.prev_best in ms and self.prev_best not in order: order.append(self.prev_best)
-        corners={0,7,56,63}
-        for m in ms:
-            if m not in order: order.append(m)
-        order.sort(key=lambda m: (0 if m in corners else 1))
-        prio=[m for m in order if m in (set([tt_move,self.prev_best]) - {None})]
-        rest=[m for m in order if m not in prio]
-        order=prio+rest
+            self.transposition_table[state.hash] = (
+                state.black, state.white, state.player, depth, score, move
+            )
 
-        maximizing = (state.player == root_player)
-        best_score=None; best_move=order[0]
-        nodes=0; evals=0; hits=0
-        alpha0=alpha; beta0=beta
-        timed_out=False
-        for m in order:
-            if time.perf_counter() > self._deadline:
-                timed_out=True; break
-            ns=engine.apply_move(state,m)
-            self.nodes+=1
-            sc,_,dn,de,dh,_ = self._search(ns, depth-1, root_player,
-                                           alpha if not maximizing else None,
-                                           beta)
-            break
-        return 0.0, None, 0,0,0,False
+    def choose_move(self, state):
+        moves = self.engine.legal_moves(state)
+        if not moves:
+            return MoveResult(PASS, 0.0, 0, 0, 0.0, 0, False, 0)
+        if len(moves) == 1:
+            return MoveResult(moves[0], 0.0, 0, 0, 0.0, 0, False, 0)
 
-    def choose_move(self, state):  # Théo Cornu
-        engine=self.engine
-        root_player=state.player
-        ms=engine.legal_moves(state)
-        if not ms:
-            if ms==[]:
-                return MoveResult(PASS,0.0,0,0,0.0,0,False,0)
-            ms=[PASS]
-        if len(ms)==1:
-            return MoveResult(ms[0], self.evaluator(state,root_player) if False else 0.0, 0,0,0.0,0,False,0)
-        self.nodes=0; self.evals=0; self.tt_hits=0
-        start=time.perf_counter()
-        self._deadline = start + self.time_budget_ms/1000.0
-        best_move=ms[0]; best_score=None; depth_reached=0; timed_out=False
-        for d in range(1, self.max_depth+1):
-            if time.perf_counter() >= self._deadline:
+        self.nodes = 0
+        self.evals = 0
+        self.tt_hits = 0
+        start = time.perf_counter()
+        self.deadline = start + self.time_budget_ms / 1000.0
+
+        best_move = moves[0]
+        best_score = None
+        depth_reached = 0
+        timed_out = False
+
+        for depth in range(1, self.max_depth + 1):
+            if time.perf_counter() >= self.deadline:
                 break
-            try:
-                sc, mv, to = self._root_search(state, d, root_player)
-            except Exception:
+            score, move, stopped = self._search_root(state, depth)
+            if move is not None:
+                best_move = move
+                best_score = score
+                depth_reached = depth
+            if stopped:
+                timed_out = True
                 break
-            if mv is not None:
-                best_move=mv; best_score=sc; depth_reached=d
-            if to:
-                timed_out=True; break
-            if time.perf_counter() >= self._deadline:
+            if time.perf_counter() >= self.deadline:
                 break
-        elapsed=(time.perf_counter()-start)*1000
+
+        elapsed = (time.perf_counter() - start) * 1000
         if best_score is None:
-            best_score=self.evaluator(state, root_player)
-        self.prev_best=best_move
-        return MoveResult(best_move, best_score if best_score is not None else 0.0,
-                          self.nodes, self.evals, elapsed, depth_reached, timed_out, self.tt_hits)
+            best_score = self.evaluator(state, state.player)
+        self.previous_best = best_move
+        return MoveResult(best_move, best_score, self.nodes, self.evals,
+                          elapsed, depth_reached, timed_out, self.tt_hits)
 
-    def _root_search(self, state, depth, root_player):  # Théo Cornu
-        engine=self.engine
-        ms=engine.legal_moves(state)
-        if not ms: ms=[PASS] if PASS in (ms or []) else ms
-        if not ms: ms=[PASS]
-        timed_out=False
-        best_score=None; best_move=ms[0]
-        alpha=float('-inf'); beta=float('inf')
-        order=self._order_moves(state, ms, None)
-        for m in order:
-            if time.perf_counter() > self._deadline:
-                timed_out=True; break
-            ns=engine.apply_move(state,m)
-            self.nodes+=1
-            sc = self._ab(ns, depth-1, root_player, alpha, beta)
-            if best_score is None or sc > best_score:
-                best_score=sc; best_move=m
-            alpha=max(alpha, best_score)
+    def _search_root(self, state, depth):
+        moves = self.engine.legal_moves(state)
+        if not moves:
+            return self._terminal_score(state, state.player), None, False
+        ordered = self._order_moves(state, moves, None)
+        best_score = None
+        best_move = moves[0]
+        alpha = float("-inf")
+        beta = float("inf")
+        timed_out = False
+        for move in ordered:
+            if time.perf_counter() > self.deadline:
+                timed_out = True
+                break
+            child = self.engine.apply_move(state, move)
+            self.nodes += 1
+            score = self._alpha_beta(child, depth - 1, state.player, alpha, beta)
+            if best_score is None or score > best_score:
+                best_score = score
+                best_move = move
+            alpha = max(alpha, best_score)
             if beta <= alpha:
                 break
-        if self.use_tt:
-            self.tt[state.hash]=(state.black, state.white, state.player, depth, best_score, best_move)
+        self._store_tt(state, depth, best_score, best_move)
         return best_score, best_move, timed_out
 
-    def _ab(self, state, depth, root_player, alpha, beta):  # Théo Cornu
-        engine=self.engine
-        if engine.is_terminal(state):
-            return self._terminal_value(state, root_player)
-        ms=engine.legal_moves(state)
-        if not ms:
-            if engine.is_terminal(state):
-                return self._terminal_value(state, root_player)
-            ms=[PASS]
-        if depth==0:
-            self.evals+=1
+    def _alpha_beta(self, state, depth, root_player, alpha, beta):
+        if self.engine.is_terminal(state):
+            return self._terminal_score(state, root_player)
+        moves = self.engine.legal_moves(state)
+        if not moves:
+            return self._terminal_score(state, root_player)
+        if depth == 0:
+            self.evals += 1
             return self.evaluator(state, root_player)
-        if len(ms)==1:
-            ns=engine.apply_move(state, ms[0])
-            self.nodes+=1
-            return self._ab(ns, depth-1, root_player, alpha, beta)
-        tt_move=None
+        if len(moves) == 1:
+            child = self.engine.apply_move(state, moves[0])
+            self.nodes += 1
+            return self._alpha_beta(child, depth - 1, root_player, alpha, beta)
+
+        tt_move = None
         if self.use_tt:
-            e=self.tt.get(state.hash)
-            if e is not None and e[0]==state.black and e[1]==state.white and e[2]==state.player:
-                if e[3] >= depth:
-                    self.tt_hits+=1
-                    return e[4]
-                tt_move=e[5]
-        order=self._order_moves(state, ms, tt_move)
-        maximizing = (state.player == root_player)
+            cached = self._lookup_tt(state, depth)
+            if cached is not None:
+                value, tt_move = cached
+                if value is not None:
+                    return value
+
+        ordered = self._order_moves(state, moves, tt_move)
+        maximizing = state.player == root_player
         if maximizing:
-            best=float('-inf')
-            for m in order:
-                if time.perf_counter() > self._deadline:
-                    return best if best!=float('-inf') else self.evaluator(state, root_player)
-                ns=engine.apply_move(state,m)
-                self.nodes+=1
-                sc=self._ab(ns, depth-1, root_player, alpha, beta)
-                if sc>best: best=sc
-                alpha=max(alpha,best)
-                if beta<=alpha: break
-            if self.use_tt:
-                self.tt[state.hash]=(state.black, state.white, state.player, depth, best, None)
-            return best
-        else:
-            best=float('inf')
-            for m in order:
-                if time.perf_counter() > self._deadline:
-                    return best if best!=float('inf') else self.evaluator(state, root_player)
-                ns=engine.apply_move(state,m)
-                self.nodes+=1
-                sc=self._ab(ns, depth-1, root_player, alpha, beta)
-                if sc<best: best=sc
-                beta=min(beta,best)
-                if beta<=alpha: break
-            if self.use_tt:
-                self.tt[state.hash]=(state.black, state.white, state.player, depth, best, None)
+            best = float("-inf")
+            for move in ordered:
+                if time.perf_counter() > self.deadline:
+                    return best if best != float("-inf") else self.evaluator(state, root_player)
+                child = self.engine.apply_move(state, move)
+                self.nodes += 1
+                score = self._alpha_beta(child, depth - 1, root_player, alpha, beta)
+                best = max(best, score)
+                alpha = max(alpha, best)
+                if beta <= alpha:
+                    break
+            self._store_tt(state, depth, best, None)
             return best
 
-    def _order_moves(self, state, ms, tt_move):  # Théo Cornu
-        order=[]
-        if tt_move is not None and tt_move in ms: order.append(tt_move)
-        if self.prev_best is not None and self.prev_best in ms and self.prev_best not in order: order.append(self.prev_best)
-        corners={0,7,56,63}
-        rest=sorted([m for m in ms if m not in order], key=lambda m: (0 if m in corners else 1, m))
-        return order+rest
+        best = float("inf")
+        for move in ordered:
+            if time.perf_counter() > self.deadline:
+                return best if best != float("inf") else self.evaluator(state, root_player)
+            child = self.engine.apply_move(state, move)
+            self.nodes += 1
+            score = self._alpha_beta(child, depth - 1, root_player, alpha, beta)
+            best = min(best, score)
+            beta = min(beta, best)
+            if beta <= alpha:
+                break
+        self._store_tt(state, depth, best, None)
+        return best

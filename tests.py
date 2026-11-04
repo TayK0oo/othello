@@ -1,38 +1,43 @@
 # Author: Théo Cornu
+from config import EVALUATION_BOUND
+from engine import OthelloEngine
+from evals import make_evaluator, EVALUATION_NAMES
 
-from engine import OthelloEngine, BLACK, WHITE, PASS
-from evals import make_evaluator, EVALS_NAMES
 
-def test_perft():  # Théo Cornu
-    eng=OthelloEngine()
-    s=eng.initial_state()
-    expected={1:4,2:12,3:56,4:244,5:1396,6:8200}
-    for d,exp in expected.items():
-        got=eng.perft(s,d)
-        print(d, got, exp)
-        assert got==exp, (d,got,exp)
+def test_perft():
+    engine = OthelloEngine()
+    state = engine.initial_state()
+    expected = {1: 4, 2: 12, 3: 56, 4: 244, 5: 1396, 6: 8200}
+    for depth, count in expected.items():
+        result = engine.perft(state, depth)
+        print(depth, result, count)
+        assert result == count
     print("perft OK")
 
-def test_symmetry():  # Théo Cornu
-    eng=OthelloEngine()
-    s=eng.initial_state()
-    for name in EVALS_NAMES:
-        ev=make_evaluator(name, eng)
-        v1=ev(s,1); v2=ev(s,2)
-        assert abs(v1+v2)<1e-9, (name,v1,v2)
-        assert abs(v1)<1000
-    print("symmetry+bounds OK")
 
-def test_hash_incremental():  # Théo Cornu
-    eng=OthelloEngine()
-    s=eng.initial_state()
-    ms=eng.legal_moves(s)
-    s2=eng.apply_move(s, ms[0])
-    assert s2.hash == eng._hash(s2.black, s2.white, s2.player)
+def test_symmetry_and_bounds():
+    engine = OthelloEngine()
+    state = engine.initial_state()
+    for name in EVALUATION_NAMES:
+        evaluator = make_evaluator(name, engine)
+        for player in (1, 2):
+            value = evaluator(state, player)
+            assert abs(value) < EVALUATION_BOUND
+        assert abs(evaluator(state, 1) + evaluator(state, 2)) < 1e-9
+    print("symétrie + bornes OK")
+
+
+def test_hash_consistency():
+    engine = OthelloEngine()
+    state = engine.initial_state()
+    move = engine.legal_moves(state)[0]
+    next_state = engine.apply_move(state, move)
+    assert next_state.hash == engine._hash(next_state.black, next_state.white, next_state.player)
     print("hash OK")
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     test_perft()
-    test_symmetry()
-    test_hash_incremental()
-    print("ALL OK")
+    test_symmetry_and_bounds()
+    test_hash_consistency()
+    print("TOUT EST OK")

@@ -34,8 +34,20 @@ button:hover{background:#2563eb}
   </div>
   <div class="card">
     <b>Joueurs</b><br>
-    <label>Noir: <select id="black"><option value="ai:mixed">IA</option><option value="human">Humain</option></select></label>
-    <label>Blanc: <select id="white"><option value="human">Humain</option><option value="ai:mixed">IA</option></select></label><br>
+    <label>Noir: <select id="black">
+      <option value="mixed_ai">IA Mixte</option>
+      <option value="positional_ai">IA Positionnelle</option>
+      <option value="absolute_ai">IA Absolue</option>
+      <option value="mobility_ai">IA Mobilité</option>
+      <option value="human">Humain</option>
+    </select></label>
+    <label>Blanc: <select id="white">
+      <option value="human">Humain</option>
+      <option value="mixed_ai">IA Mixte</option>
+      <option value="positional_ai">IA Positionnelle</option>
+      <option value="absolute_ai">IA Absolue</option>
+      <option value="mobility_ai">IA Mobilité</option>
+    </select></label><br>
     <label>Stratégie IA: <select id="strat"><option>mixed</option><option>positional</option><option>absolute</option><option>mobility</option></select></label><br>
     <label>Budget ms: <input id="budget" type="number" value="1000" style="width:80px"></label>
     <label> Profondeur: <input id="depth" type="number" value="6" style="width:60px"></label><br>
@@ -97,7 +109,7 @@ async function applyConfig(){
 }
 async function aiMove(){
   const body={strategy:document.getElementById('strat').value,
-    budget:parseInt(document.getElementById('budget').value),
+    budget_ms:parseInt(document.getElementById('budget').value),
     depth:parseInt(document.getElementById('depth').value)};
   const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await r.json();

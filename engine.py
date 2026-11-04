@@ -1,188 +1,183 @@
 # Author: Théo Cornu
+from dataclasses import dataclass
+import random
 
-import time, random
-from dataclasses import dataclass, field
+from config import (
+    BLACK, WHITE, PASS, CELL_COUNT, BOARD_SIZE,
+    ZOBRIST_SEED,
+)
 
-BLACK, WHITE, PASS = 1, 2, -1
-CONTRACT_VERSION = "1.1"
-EVAL_BOUND = 1000
-TERMINAL_BASE = 10000
+DIRECTIONS = [(-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1)]
 
-DIRS = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
 
 @dataclass(frozen=True, slots=True)
-class State:  # Théo Cornu
+class State:
     black: int
     white: int
     player: int
     move_number: int
     hash: int
 
-def _popcount(x): return bin(x).count("1")
 
-class OthelloEngine:  # Théo Cornu
-    def __init__(self, seed=0xC0FFEE):  # Théo Cornu
-        rng = random.Random(seed)
-        self.Z = [[rng.getrandbits(64) for _ in range(3)] for _ in range(64)]
-        self.Z_SIDE = rng.getrandbits(64)
+def _popcount(bits):
+    return bin(bits).count("1")
 
-    def _hash(self, black, white, player):  # Théo Cornu
-        h = 0
-        bb = black
-        while bb:
-            i = (bb & -bb).bit_length()-1
-            h ^= self.Z[i][BLACK]; bb &= bb-1
-        ww = white
-        while ww:
-            i = (ww & -ww).bit_length()-1
-            h ^= self.Z[i][WHITE]; ww &= ww-1
+
+class OthelloEngine:
+    def __init__(self, seed=ZOBRIST_SEED):
+        generator = random.Random(seed)
+        self.zobrist_table = [[generator.getrandbits(64) for _ in range(3)] for _ in range(CELL_COUNT)]
+        self.zobrist_side_key = generator.getrandbits(64)
+
+    def _hash(self, black, white, player):
+        value = 0
+        black_bits = black
+        while black_bits:
+            index = (black_bits & -black_bits).bit_length() - 1
+            value ^= self.zobrist_table[index][BLACK]
+            black_bits &= black_bits - 1
+        white_bits = white
+        while white_bits:
+            index = (white_bits & -white_bits).bit_length() - 1
+            value ^= self.zobrist_table[index][WHITE]
+            white_bits &= white_bits - 1
         if player == WHITE:
-            h ^= self.Z_SIDE
-        return h
+            value ^= self.zobrist_side_key
+        return value
 
-    def initial_state(self) -> State:  # Théo Cornu
-        black = (1<<(3*8+4)) | (1<<(4*8+3))
-        white = (1<<(3*8+3)) | (1<<(4*8+4))
+    def initial_state(self):
+        black = (1 << (3 * BOARD_SIZE + 4)) | (1 << (4 * BOARD_SIZE + 3))
+        white = (1 << (3 * BOARD_SIZE + 3)) | (1 << (4 * BOARD_SIZE + 4))
         return State(black, white, WHITE, 0, self._hash(black, white, WHITE))
 
-    def _player_bb(self, state, p):  # Théo Cornu
-        return state.black if p==BLACK else state.white
-    def _opp_bb(self, state, p):  # Théo Cornu
-        return state.white if p==BLACK else state.black
+    def _bits_of(self, state, player):
+        return state.black if player == BLACK else state.white
 
-    def legal_moves(self, state) -> list[int]:  # Théo Cornu
-        p = state.player; opp = 3-p
-        own = self._player_bb(state, p); other = self._player_bb(state, opp)
-        occupied = state.black | state.white
-        res = []
-        for idx in range(64):
-            if occupied & (1<<idx): continue
-            r,c = divmod(idx,8)
-            ok=False
-            for dr,dc in DIRS:
-                nr,nc = r+dr, c+dc
-                seen=False
-                while 0<=nr<8 and 0<=nc<8:
-                    bit = 1<<(nr*8+nc)
+    def _legal_moves_for(self, black, white, player):
+        own = black if player == BLACK else white
+        other = white if player == BLACK else black
+        occupied = black | white
+        moves = []
+        for index in range(CELL_COUNT):
+            if occupied & (1 << index):
+                continue
+            row, col = divmod(index, BOARD_SIZE)
+            found = False
+            for delta_row, delta_col in DIRECTIONS:
+                next_row, next_col = row + delta_row, col + delta_col
+                seen_other = False
+                while 0 <= next_row < BOARD_SIZE and 0 <= next_col < BOARD_SIZE:
+                    bit = 1 << (next_row * BOARD_SIZE + next_col)
                     if other & bit:
-                        seen=True; nr+=dr; nc+=dc; continue
-                    if own & bit and seen:
-                        ok=True
+                        seen_other = True
+                        next_row += delta_row
+                        next_col += delta_col
+                        continue
+                    if own & bit and seen_other:
+                        found = True
                     break
-                if ok: break
-            if ok:
-                res.append(idx)
-        if res:
-            return sorted(res)
-        opp_state = State(state.black, state.white, opp, state.move_number, state.hash ^ self.Z_SIDE)
-        opp_moves = self.legal_moves_raw(state.black, state.white, opp)
-        if opp_moves:
+                if found:
+                    break
+            if found:
+                moves.append(index)
+        return sorted(moves)
+
+    def legal_moves(self, state):
+        moves = self._legal_moves_for(state.black, state.white, state.player)
+        if moves:
+            return moves
+        opponent_moves = self._legal_moves_for(state.black, state.white, 3 - state.player)
+        if opponent_moves:
             return [PASS]
         return []
 
-    def legal_moves_raw(self, black, white, p):  # Théo Cornu
-        own = black if p==BLACK else white
-        other = white if p==BLACK else black
-        occupied = black | white
-        res=[]
-        for idx in range(64):
-            if occupied & (1<<idx): continue
-            r,c=divmod(idx,8)
-            ok=False
-            for dr,dc in DIRS:
-                nr,nc=r+dr,c+dc; seen=False
-                while 0<=nr<8 and 0<=nc<8:
-                    bit=1<<(nr*8+nc)
-                    if other & bit:
-                        seen=True; nr+=dr; nc+=dc; continue
-                    if own & bit and seen:
-                        ok=True
-                    break
-                if ok: break
-            if ok: res.append(idx)
-        return sorted(res)
-
-    def apply_move(self, state, move: int) -> State:  # Théo Cornu
+    def apply_move(self, state, move):
         if move == PASS:
             if self.legal_moves(state) != [PASS]:
-                if PASS not in self.legal_moves(state):
-                    raise ValueError("illegal pass")
-            p = 3 - state.player
-            new_hash = state.hash ^ self.Z_SIDE
-            return State(state.black, state.white, p, state.move_number, new_hash)
+                raise ValueError("coup de passe illégal")
+            next_player = 3 - state.player
+            return State(state.black, state.white, next_player, state.move_number,
+                         state.hash ^ self.zobrist_side_key)
         if move not in self.legal_moves(state):
-            raise ValueError(f"illegal move {move}")
-        p = state.player; opp = 3-p
-        own = self._player_bb(state, p)
-        other = self._player_bb(state, opp)
-        idx = move
-        r,c = divmod(idx,8)
-        new_own = own | (1<<idx)
+            raise ValueError("coup illégal")
+        player = state.player
+        opponent = 3 - player
+        own = self._bits_of(state, player)
+        other = self._bits_of(state, opponent)
+        row, col = divmod(move, BOARD_SIZE)
+        new_own = own | (1 << move)
         new_other = other
-        for dr,dc in DIRS:
-            nr,nc = r+dr, c+dc
-            path=[]
-            while 0<=nr<8 and 0<=nc<8:
-                bit=1<<(nr*8+nc)
+        for delta_row, delta_col in DIRECTIONS:
+            next_row, next_col = row + delta_row, col + delta_col
+            path = []
+            while 0 <= next_row < BOARD_SIZE and 0 <= next_col < BOARD_SIZE:
+                bit = 1 << (next_row * BOARD_SIZE + next_col)
                 if other & bit:
-                    path.append((nr,nc)); nr+=dr; nc+=dc; continue
+                    path.append((next_row, next_col))
+                    next_row += delta_row
+                    next_col += delta_col
+                    continue
                 if own & bit and path:
-                    for (rr,cc) in path:
-                        new_other &= ~(1<<(rr*8+cc))
-                        new_own |= (1<<(rr*8+cc))
+                    for cell_row, cell_col in path:
+                        new_other &= ~(1 << (cell_row * BOARD_SIZE + cell_col))
+                        new_own |= (1 << (cell_row * BOARD_SIZE + cell_col))
                 break
-        if p==BLACK:
+        if player == BLACK:
             new_black, new_white = new_own, new_other
         else:
             new_black, new_white = new_other, new_own
-        new_move_number = state.move_number + 1
-        new_player = opp
-        new_hash = self._hash(new_black, new_white, new_player)
-        return State(new_black, new_white, new_player, new_move_number, new_hash)
+        next_player = opponent
+        return State(new_black, new_white, next_player, state.move_number + 1,
+                     self._hash(new_black, new_white, next_player))
 
-    def is_terminal(self, state) -> bool:  # Théo Cornu
-        if state.black | state.white == (1<<64)-1:
+    def is_terminal(self, state):
+        if (state.black | state.white) == (1 << CELL_COUNT) - 1:
             return True
         if self.legal_moves(state):
             return False
-        opp = 3-state.player
-        if self.legal_moves_raw(state.black, state.white, opp):
-            return False
-        return True
+        return not self._legal_moves_for(state.black, state.white, 3 - state.player)
 
-    def score(self, state) -> tuple[int,int]:  # Théo Cornu
+    def score(self, state):
         return _popcount(state.black), _popcount(state.white)
 
-    def mobility(self, state, player) -> int:  # Théo Cornu
-        return len(self.legal_moves_raw(state.black, state.white, player))
+    def mobility(self, state, player):
+        return len(self._legal_moves_for(state.black, state.white, player))
 
-    def board_list(self, state) -> list[int]:  # Théo Cornu
-        out=[0]*64
-        for i in range(64):
-            if state.black & (1<<i): out[i]=BLACK
-            elif state.white & (1<<i): out[i]=WHITE
-        return out
+    def board_list(self, state):
+        cells = [0] * CELL_COUNT
+        for index in range(CELL_COUNT):
+            if state.black & (1 << index):
+                cells[index] = BLACK
+            elif state.white & (1 << index):
+                cells[index] = WHITE
+        return cells
 
-    def to_notation(self, move: int) -> str:  # Théo Cornu
-        if move == PASS: return "pass"
-        r,c = divmod(move,8)
-        return f"{chr(ord('a')+c)}{r+1}"
+    def to_notation(self, move):
+        if move == PASS:
+            return "pass"
+        row, col = divmod(move, BOARD_SIZE)
+        return f"{chr(ord('a') + col)}{row + 1}"
 
-    def from_notation(self, text: str) -> int:  # Théo Cornu
-        t=text.strip().lower()
-        if t=="pass": return PASS
-        c=ord(t[0])-ord('a'); r=int(t[1:])-1
-        return r*8+c
+    def from_notation(self, text):
+        value = text.strip().lower()
+        if value == "pass":
+            return PASS
+        col = ord(value[0]) - ord("a")
+        row = int(value[1:]) - 1
+        return row * BOARD_SIZE + col
 
-    def perft(self, state, depth: int) -> int:  # Théo Cornu
-        if depth==0: return 1
-        ms = self.legal_moves(state)
-        if not ms:
-            if self.is_terminal(state): return 1
-            ms=[PASS]
-        total=0
-        for m in ms:
-            total += self.perft(self.apply_move(state,m), depth-1)
+    def perft(self, state, depth):
+        if depth == 0:
+            return 1
+        moves = self.legal_moves(state)
+        if not moves:
+            if self.is_terminal(state):
+                return 1
+            moves = [PASS]
+        total = 0
+        for move in moves:
+            total += self.perft(self.apply_move(state, move), depth - 1)
         return total
+
 
 ENGINE = OthelloEngine()

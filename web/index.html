@@ -32,9 +32,13 @@ button:hover{background:#2563eb}
     <div class="row"><b>Terminé</b><span id="term">-</span></div>
   </div>
   <div class="card">
+    <b>Joueurs</b><br>
+    <label>Noir: <select id="black"><option value="ai:mixed">IA</option><option value="human">Humain</option></select></label>
+    <label>Blanc: <select id="white"><option value="human">Humain</option><option value="ai:mixed">IA</option></select></label><br>
     <label>Stratégie IA: <select id="strat"><option>mixed</option><option>positional</option><option>absolute</option><option>mobility</option></select></label><br>
     <label>Budget ms: <input id="budget" type="number" value="1000" style="width:80px"></label>
     <label> Profondeur: <input id="depth" type="number" value="6" style="width:60px"></label><br>
+    <button onclick="applyConfig()">Appliquer</button>
     <button onclick="aiMove()">Coup IA</button>
     <button onclick="newGame()">Nouvelle partie</button>
   </div>
@@ -81,6 +85,12 @@ async function playMove(m){
   state=await r.json();
   addHist('H', m);
   render();
+}
+async function applyConfig(){
+  const b=document.getElementById('black').value;
+  const w=document.getElementById('white').value;
+  await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({black:b,white:w})});
+  await newGame();
 }
 async function aiMove(){
   const body={strategy:document.getElementById('strat').value,

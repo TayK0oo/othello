@@ -40,6 +40,8 @@ button:hover{background:#2563eb}
     <label> Profondeur: <input id="depth" type="number" value="6" style="width:60px"></label><br>
     <button onclick="applyConfig()">Appliquer</button>
     <button onclick="aiMove()">Coup IA</button>
+    <button onclick="startAuto()">Auto IA vs IA</button>
+    <button onclick="pauseAuto()">Pause</button>
     <button onclick="newGame()">Nouvelle partie</button>
   </div>
   <div class="card" id="aiinfo" style="display:none">
@@ -116,6 +118,9 @@ function addHist(who,m,ev){
   line.textContent=who+': '+(m===-1?'pass':m)+' '+(ev!==undefined?'('+ev+')':'');
   div.prepend(line);
 }
+let autoTimer=null;
+function startAuto(){ pauseAuto(); autoTimer=setInterval(async()=>{ if(state.terminal){pauseAuto();return;} await aiMove(); },400); }
+function pauseAuto(){ if(autoTimer){clearInterval(autoTimer);autoTimer=null;} }
 refresh();
 </script>
 </body>

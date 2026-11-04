@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Othello — Web UI</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:#0f172a;color:#e2e8f0;display:flex;gap:24px;flex-wrap:wrap}
+.board{display:grid;grid-template-columns:repeat(8,56px);gap:4px;background:#1e293b;padding:8px;border-radius:12px}
+.cell{width:56px;height:56px;background:#16a34a;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:12px;color:#fff}
+.cell.legal{box-shadow:inset 0 0 0 2px #fbbf24}
+.piece{width:44px;height:44px;border-radius:50%}
+.black{background:#0f172a;border:2px solid #475569}
+.white{background:#f8fafc;border:2px solid #cbd5e1}
+.panel{min-width:260px;max-width:360px}
+.card{background:#1e293b;padding:12px;border-radius:10px;margin-bottom:12px}
+button{padding:8px 12px;margin:4px 2px;border:none;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer}
+button:hover{background:#2563eb}
+.row{display:flex;justify-content:space-between;margin:4px 0}
+.hist{max-height:240px;overflow:auto;font-size:13px}
+.legal-dot{width:12px;height:12px;border-radius:50%;background:rgba(251,191,36,.6)}
+</style>
+</head>
+<body>
+<div>
+  <div class="board" id="board"></div>
+</div>
+<div class="panel">
+  <div class="card">
+    <div class="row"><b>Tour</b><span id="player">-</span></div>
+    <div class="row"><b>Score B/N</b><span id="score">-</span></div>
+    <div class="row"><b>Coup #</b><span id="mn">-</span></div>
+    <div class="row"><b>Terminé</b><span id="term">-</span></div>
+  </div>
+  <div class="card">
+    <label>Stratégie IA: <select id="strat"><option>mixed</option><option>positional</option><option>absolute</option><option>mobility</option></select></label><br>
+    <label>Budget ms: <input id="budget" type="number" value="1000" style="width:80px"></label>
+    <label> Profondeur: <input id="depth" type="number" value="6" style="width:60px"></label><br>
+    <button onclick="aiMove()">Coup IA</button>
+    <button onclick="newGame()">Nouvelle partie</button>
+  </div>
+  <div class="card" id="aiinfo" style="display:none">
+    <b>Dernier coup IA</b>
+    <div class="row"><span>Coup</span><span id="aimove">-</span></div>
+    <div class="row"><span>Eval</span><span id="aieval">-</span></div>
+    <div class="row"><span>Nœuds</span><span id="ainodes">-</span></div>
+    <div class="row"><span>Évals</span><span id="aievals">-</span></div>
+    <div class="row"><span>Temps ms</span><span id="aitime">-</span></div>
+    <div class="row"><span>Profondeur</span><span id="aidepth">-</span></div>
+  </div>
+  <div class="card">
+    <b>Historique</b>
+    <div class="hist" id="hist"></div>
+  </div>
+</div>
+<script>
+const board=document.getElementById('board');
+let state=null;
+function render(){
+  board.innerHTML='';
+  for(let i=0;i<64;i++){
+    const cell=document.createElement('div');
+    cell.className='cell';
+    const v=state.board[i];
+    if(v===1){const p=document.createElement('div');p.className='piece black';cell.appendChild(p);}
+    else if(v===2){const p=document.createElement('div');p.className='piece white';cell.appendChild(p);}
+    if(state.legal.includes(i)){cell.classList.add('legal');
+      if(v===0){const d=document.createElement('div');d.className='legal-dot';cell.appendChild(d);}
+      cell.onclick=()=>playMove(i);
+    }
+    board.appendChild(cell);
+  }
+  document.getElementById('player').textContent = state.player===1?'Noir':'Blanc';
+  document.getElementById('score').textContent = state.score[0]+' / '+state.score[1];
+  document.getElementById('mn').textContent = state.move_number;
+  document.getElementById('term').textContent = state.terminal?'Oui':'Non';
+}
+async function refresh(){const r=await fetch('/api/state');state=await r.json();render();}
+async function playMove(m){
+  if(state.terminal) return;
+  const r=await fetch('/api/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({move:m})});
+  state=await r.json();
+  addHist('H', m);
+  render();
+}
+async function aiMove(){
+  const body={strategy:document.getElementById('strat').value,
+    budget:parseInt(document.getElementById('budget').value),
+    depth:parseInt(document.getElementById('depth').value)};
+  const r=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  state=d;
+  document.getElementById('aiinfo').style.display='block';
+  document.getElementById('aimove').textContent=d.ai_notation+' ('+d.ai_move+')';
+  document.getElementById('aieval').textContent=d.eval_score;
+  document.getElementById('ainodes').textContent=d.nodes;
+  document.getElementById('aievals').textContent=d.evals;
+  document.getElementById('aitime').textContent=d.time_ms;
+  document.getElementById('aidepth').textContent=d.depth_reached+(d.timed_out?' (timeout)':'');
+  addHist('IA', d.ai_move, d.eval_score);
+  render();
+}
+async function newGame(){await fetch('/api/new',{method:'POST'});document.getElementById('hist').innerHTML='';document.getElementById('aiinfo').style.display='none';await refresh();}
+function addHist(who,m,ev){
+  const div=document.getElementById('hist');
+  const line=document.createElement('div');
+  line.textContent=who+': '+(m===-1?'pass':m)+' '+(ev!==undefined?'('+ev+')':'');
+  div.prepend(line);
+}
+refresh();
+</script>
+</body>
+</html>

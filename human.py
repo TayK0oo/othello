@@ -10,7 +10,7 @@ class HumanPlayer(Player):
         self.engine = engine
         self.name = name
 
-    def new_game(self, color):
+    def new_game(self, _color):
         return None
 
     def choose_move(self, state):

@@ -2,6 +2,7 @@
 import json
 import os
 
+from config import DEFAULT_ALGO, DEFAULT_BUDGET_MS, DEFAULT_DEPTH, DEFAULT_STRATEGY
 from agent import Agent
 from evals import make_evaluator
 from human import HumanPlayer
@@ -14,7 +15,7 @@ def load_player_config(path=CONFIG_PATH):
         return json.load(file)
 
 
-def make_ai(engine, strategy="mixed", algo="alphabeta", depth=6, budget_ms=1000, name=None):
+def make_ai(engine, strategy=DEFAULT_STRATEGY, algo=DEFAULT_ALGO, depth=DEFAULT_DEPTH, budget_ms=DEFAULT_BUDGET_MS, name=None):
     evaluator = make_evaluator(strategy, engine)
     return Agent(
         engine,
@@ -37,10 +38,10 @@ def make_player(engine, profile):
     if profile_type == "ai":
         return make_ai(
             engine,
-            strategy=profile.get("strategy", "mixed"),
-            algo=profile.get("algo", "alphabeta"),
-            depth=int(profile.get("depth", 6)),
-            budget_ms=int(profile.get("budget_ms", 1000)),
+            strategy=profile.get("strategy", DEFAULT_STRATEGY),
+            algo=profile.get("algo", DEFAULT_ALGO),
+            depth=int(profile.get("depth", DEFAULT_DEPTH)),
+            budget_ms=int(profile.get("budget_ms", DEFAULT_BUDGET_MS)),
             name=profile.get("name"),
         )
     raise ValueError(f"type de joueur inconnu : {profile_type}")

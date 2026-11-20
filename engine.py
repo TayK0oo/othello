@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import random
 
 from config import (
-    BLACK, WHITE, PASS, CELL_COUNT, BOARD_SIZE,
+    BLACK, WHITE, PASS, EMPTY, CELL_COUNT, BOARD_SIZE,
     ZOBRIST_SEED,
 )
 
@@ -144,7 +144,7 @@ class OthelloEngine:
         return len(self._legal_moves_for(state.black, state.white, player))
 
     def board_list(self, state):
-        cells = [0] * CELL_COUNT
+        cells = [EMPTY] * CELL_COUNT
         for index in range(CELL_COUNT):
             if state.black & (1 << index):
                 cells[index] = BLACK

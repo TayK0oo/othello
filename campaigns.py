@@ -1,6 +1,6 @@
 # Author: Théo Cornu
 import contextlib
-import csv
+
 import io
 from itertools import permutations
 
@@ -10,7 +10,6 @@ from harness import play_game
 from players import make_ai
 
 DEFAULT_STRATEGIES = ["positional", "absolute", "mobility", "mixed"]
-
 
 def run_pairing(engine, first, second, games=2, depth=4, budget_ms=300):
     results = {first: 0, second: 0, "draw": 0}
@@ -35,7 +34,6 @@ def run_pairing(engine, first, second, games=2, depth=4, budget_ms=300):
             results[second] += 1
     return results
 
-
 def round_robin(strategies=None, games=2, depth=4, budget_ms=300):
     strategies = strategies or DEFAULT_STRATEGIES
     engine = OthelloEngine()
@@ -51,7 +49,6 @@ def round_robin(strategies=None, games=2, depth=4, budget_ms=300):
         totals[second]["losses"] += result[first]
         totals[second]["draws"] += result["draw"]
     return totals, direct
-
 
 def print_report(totals, direct):
     print("| Stratégie | Victoires | Défaites | Nulles |")
@@ -71,7 +68,6 @@ def print_report(totals, direct):
                 result = direct.get((first, second))
                 cells.append(f"{result[first]}-{result[second]}" if result else "")
         print(f"| {first} | " + " | ".join(cells) + " |")
-
 
 if __name__ == "__main__":
     totals, direct = round_robin(games=2, depth=3, budget_ms=100)

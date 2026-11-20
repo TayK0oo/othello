@@ -3,7 +3,7 @@ import random
 import time
 from dataclasses import dataclass
 
-from config import BLACK, WHITE, PASS, TERMINAL_SCORE_BASE
+from config import BLACK, PASS, TERMINAL_SCORE_BASE
 
 
 @dataclass
@@ -21,7 +21,7 @@ class MoveResult:
 class Player:
     name: str
 
-    def new_game(self, color):
+    def new_game(self, _color):
         raise NotImplementedError
 
     def choose_move(self, state):
@@ -48,7 +48,7 @@ class Agent(Player):
         self.tt_hits = 0
         self.deadline = 0.0
 
-    def new_game(self, color):
+    def new_game(self, _color):
         self.transposition_table = {}
         self.previous_best = None
         self.random = random.Random(self.seed)

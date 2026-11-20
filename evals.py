@@ -1,5 +1,5 @@
 # Author: Théo Cornu
-from config import BLACK, WHITE, EVALUATION_BOUND, EARLY_MOVES, ENDGAME_EMPTIES
+from config import BLACK, WHITE, EARLY_MOVES, ENDGAME_EMPTIES
 
 POSITION_WEIGHTS = [
     [100, -20,  10,   5,   5,  10, -20, 100],

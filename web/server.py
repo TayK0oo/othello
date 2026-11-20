@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config import BLACK, WHITE, PASS
+from config import BLACK, WHITE
 from engine import OthelloEngine
 from players import load_player_config, make_profile_player
 

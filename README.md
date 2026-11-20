@@ -72,6 +72,7 @@ L'interface permet :
 | `RAPPORT.docx` | Rapport formaté, prêt à importer dans Google Docs. |
 | `RAPPORT.pdf` | Aperçu PDF du rapport. |
 | `JOURNAL.md` | Cahier de bord des décisions et résultats. |
+| `GUIDE.md` | Explication complète du projet pour l'oral. |
 | `Othello_Colab.ipynb` | Notebook pour Google Colab. |
 
 ---

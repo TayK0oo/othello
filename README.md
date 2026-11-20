@@ -63,10 +63,15 @@ L'interface permet :
 | `players.py` | Fabrique de joueurs à partir des profils JSON. |
 | `harness.py` | Déroulement d'une partie et export CSV/TXT. |
 | `cli.py` | Ligne de commande pour lancer des parties. |
+| `campaigns.py` | Campagnes de matchs entre stratégies (round-robin + tableau). |
 | `tests.py` | Tests de conformité (perft, symétrie, hash). |
 | `web/server.py` | Serveur HTTP léger (API JSON + fichiers statiques). |
 | `web/index.html` | Interface web (plateau, panneaux, historique). |
 | `CONTRACT.md` | Contrat d'interface entre modules A et B. |
+| `RAPPORT.md` | Rapport complet (source Markdown). |
+| `RAPPORT.docx` | Rapport formaté, prêt à importer dans Google Docs. |
+| `RAPPORT.pdf` | Aperçu PDF du rapport. |
+| `JOURNAL.md` | Cahier de bord des décisions et résultats. |
 | `Othello_Colab.ipynb` | Notebook pour Google Colab. |
 
 ---
@@ -235,6 +240,20 @@ Les profils sont lus dans `players_config.json`.
 Le script construit les joueurs, lance les parties et affiche le gagnant,
 le score final et le nombre de coups.
 
+### Campagnes — `campaigns.py`
+
+```bash
+python campaigns.py
+```
+
+Lance un round-robin entre les quatre stratégies (deux parties par
+confrontation, couleurs alternées) et affiche :
+
+- le tableau des victoires / défaites / nulles ;
+- le tableau des confrontations directes.
+
+Les résultats sont aussi écrits dans `runs/`.
+
 ---
 
 ## 12. Interface web — `web/`
@@ -288,7 +307,18 @@ Toute modification doit être répercutée dans `CONTRACT.md` et acceptée par l
 
 ---
 
-## 15. Google Colab
+## 15. Rapport — `RAPPORT.*`
+
+- `RAPPORT.md` : source complète (sections A remplies, blocs `[DEV B — À COMPLÉTER]`).
+- `RAPPORT.docx` : version formatée à importer dans Google Docs.
+- `RAPPORT.pdf` : aperçu.
+
+Le rapport contient : introduction, analyse, validations chiffrées, discussion,
+conclusion, bibliographie, annexes et liste des figures.
+
+---
+
+## 16. Google Colab
 
 1. Ouvrir `Othello_Colab.ipynb`.
 2. Uploader les fichiers `.py` et `players_config.json` dans `/content`.
@@ -296,7 +326,7 @@ Toute modification doit être répercutée dans `CONTRACT.md` et acceptée par l
 
 ---
 
-## 16. Reproductibilité
+## 17. Reproductibilité
 
 - graine Zobrist fixe ;
 - profils et paramètres dans des fichiers de configuration ;

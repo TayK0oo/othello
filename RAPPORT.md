@@ -253,19 +253,19 @@ Commande : `python campaigns.py`.
 
 | Stratégie | Victoires | Défaites | Nulles |
 |---|---|---|---|
-| Positionnelle | 8 | 4 | 0 |
+| Positionnelle | 10 | 2 | 0 |
 | Absolue | 1 | 11 | 0 |
-| Mobilité | 8 | 4 | 0 |
-| Mixte | 7 | 5 | 0 |
+| Mobilité | 9 | 3 | 0 |
+| Mixte | 4 | 8 | 0 |
 
 **Tableau des confrontations directes** (score de la stratégie en ligne)
 
 | Noir \ Blanc | Positionnelle | Absolue | Mobilité | Mixte |
 |---|---|---|---|---|
-| Positionnelle | — | 1-1 | 1-1 | 0-2 |
+| Positionnelle | — | 1-1 | 1-1 | 2-0 |
 | Absolue | 0-2 | — | 0-2 | 0-2 |
 | Mobilité | 0-2 | 2-0 | — | 2-0 |
-| Mixte | 0-2 | 2-0 | 1-1 | — |
+| Mixte | 0-2 | 2-0 | 0-2 | — |
 
 **Lecture.** Les stratégies positionnelle et de mobilité dominent, la stratégie
 absolue est clairement la plus faible sur des parties complètes : privilégier

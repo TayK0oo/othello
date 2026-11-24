@@ -286,10 +286,10 @@ Résultats obtenus (24 parties, profondeur 3, 100 ms) :
 
 | Stratégie | Victoires | Défaites | Nulles |
 |---|---|---|---|
-| Positionnelle | 8 | 4 | 0 |
+| Positionnelle | 10 | 2 | 0 |
 | Absolue | 1 | 11 | 0 |
-| Mobilité | 8 | 4 | 0 |
-| Mixte | 7 | 5 | 0 |
+| Mobilité | 9 | 3 | 0 |
+| Mixte | 4 | 8 | 0 |
 
 Conclusion : la positionnelle et la mobilité dominent ; l'absolue est la plus
 faible car elle privilégie le nombre de pions trop tôt.
